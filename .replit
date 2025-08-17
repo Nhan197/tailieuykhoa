@@ -1,0 +1,7 @@
+entrypoint = "server.js"
+
+[env]
+PORT = "3000"
+
+[run]
+command = "npm start"
