@@ -1,0 +1,330 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Kho tài liệu</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  .drawer{position:fixed; top:0; right:-100%; width:480px; max-width:92vw; height:100%; background:#fff; box-shadow:-4px 0 20px rgba(0,0,0,.15); transition:right .25s ease; z-index:50;}
+  .drawer.open{right:0}
+  .badge{background:#ef4444;color:#fff;border-radius:999px;padding:0 8px;font-size:12px;line-height:18px;display:inline-block;min-width:22px;text-align:center}
+  .overlay{position:fixed; inset:0; background:rgba(0,0,0,.35); display:none; z-index:40}
+  .overlay.show{display:block}
+  .modal{position:fixed; inset:0; display:none; align-items:center; justify-content:center; z-index:60; background:rgba(0,0,0,.45)}
+  .modal.show{display:flex}
+</style>
+</head>
+<body class="bg-gray-50">
+<header class="bg-white shadow-sm sticky top-0 z-30">
+  <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
+    <div class="font-bold text-xl">📚 Kho tài liệu</div>
+    <nav class="flex items-center gap-5">
+      <button id="nav-catalog" class="hover:text-blue-600">Chuyên mục</button>
+      <button id="nav-library" class="hover:text-blue-600">Thư viện</button>
+      <button id="nav-noti" class="hover:text-blue-600">Thông báo <span id="badge-noti" class="badge hidden">0</span></button>
+      <button id="nav-admin" class="hover:text-blue-600 hidden">Quản trị <span id="badge-admin" class="badge hidden">0</span></button>
+      <div id="nav-auth" class="flex items-center gap-3">
+        <button id="btn-login" class="px-3 py-1.5 rounded bg-gray-900 text-white">Đăng nhập/Đăng ký</button>
+      </div>
+    </nav>
+  </div>
+</header>
+
+<main class="max-w-6xl mx-auto p-4">
+  <section id="screen-auth" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+    <div class="bg-white p-6 rounded shadow">
+      <h2 class="font-bold text-lg mb-3">Đăng nhập</h2>
+      <form id="login-form" class="space-y-3">
+        <input id="login-identity" class="w-full border p-2 rounded" placeholder="Email hoặc tên đăng nhập">
+        <input id="login-password" class="w-full border p-2 rounded" type="password" placeholder="Mật khẩu">
+        <label class="flex items-center gap-2 text-sm text-gray-600">
+          <input id="isAdmin" type="checkbox" class="h-4 w-4"> Bạn là admin?
+        </label>
+        <button class="w-full bg-gray-900 text-white rounded py-2">Đăng nhập</button>
+      </form>
+    </div>
+
+    <div class="bg-white p-6 rounded shadow">
+      <h2 class="font-bold text-lg mb-3">Đăng ký</h2>
+      <form id="register-form" class="space-y-3">
+        <input id="reg-name" class="w-full border p-2 rounded" placeholder="Họ tên">
+        <input id="reg-email" class="w-full border p-2 rounded" placeholder="Email">
+        <input id="reg-pass" class="w-full border p-2 rounded" type="password" placeholder="Mật khẩu (≥8 ký tự)">
+        <input id="reg-pass2" class="w-full border p-2 rounded" type="password" placeholder="Nhập lại mật khẩu">
+        <button class="w-full bg-gray-900 text-white rounded py-2">Tạo tài khoản</button>
+      </form>
+    </div>
+  </section>
+
+  <section id="screen-catalog" class="hidden">
+    <h2 class="font-bold text-xl mb-4">Danh mục</h2>
+    <div id="cat-grid" class="grid sm:grid-cols-2 md:grid-cols-3 gap-4"></div>
+  </section>
+
+  <section id="screen-library" class="hidden">
+    <div class="flex items-center justify-between mb-3">
+      <h2 class="font-bold text-xl">Thư viện của bạn</h2>
+      <div class="flex gap-2">
+        <input id="active-code" class="border p-2 rounded" placeholder="Nhập mã kích hoạt">
+        <button id="btn-activate" class="px-3 py-2 bg-emerald-600 text-white rounded">Kích hoạt</button>
+      </div>
+    </div>
+    <div id="lib-list" class="grid sm:grid-cols-2 md:grid-cols-3 gap-4"></div>
+  </section>
+
+  <section id="screen-noti" class="hidden">
+    <div class="flex items-center justify-between">
+      <h2 class="font-bold text-xl mb-3">Thông báo</h2>
+      <button id="btn-readall" class="text-sm underline">Đánh dấu đã đọc</button>
+    </div>
+    <div id="noti-list" class="space-y-3"></div>
+  </section>
+
+  <section id="screen-admin" class="hidden">
+    <h2 class="font-bold text-xl mb-3">Quản trị</h2>
+
+    <div class="bg-white rounded shadow p-4 mb-6">
+      <h3 class="font-semibold mb-3">Đơn chờ xác nhận</h3>
+      <div id="pending-list" class="space-y-3"></div>
+    </div>
+
+    <div class="bg-white rounded shadow p-4">
+      <h3 class="font-semibold mb-3">Tải tài liệu lên</h3>
+      <form id="form-upload" class="grid md:grid-cols-2 gap-3">
+        <input name="title" class="border p-2 rounded" placeholder="Tiêu đề tài liệu" required>
+        <input name="price" class="border p-2 rounded" placeholder="Giá (đồng, để trống = ngẫu nhiên)">
+        <select name="category" class="border p-2 rounded" required></select>
+        <select name="sub" class="border p-2 rounded" required></select>
+        <input name="file" type="file" class="border p-2 rounded md:col-span-2" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx" required>
+        <button class="bg-gray-900 text-white rounded py-2 md:col-span-2">Tải lên</button>
+      </form>
+      <p id="upload-msg" class="text-sm text-emerald-700 mt-2"></p>
+    </div>
+  </section>
+</main>
+
+<div id="drawer" class="drawer">
+  <div class="p-4 border-b flex items-center justify-between">
+    <h3 id="drawer-title" class="font-bold text-lg">Mục</h3>
+    <button id="close-drawer" class="text-sm text-gray-600">Đóng</button>
+  </div>
+  <div id="drawer-body" class="p-4 space-y-3 overflow-y-auto" style="height: calc(100% - 56px);"></div>
+</div>
+<div id="drawer-overlay" class="overlay"></div>
+
+<div id="pay-modal" class="modal">
+  <div class="bg-white rounded shadow p-5 max-w-md w-full">
+    <h3 class="font-bold text-lg mb-3">Thanh toán MoMo</h3>
+    <div id="pay-info" class="space-y-2 text-sm mb-3"></div>
+    <div class="flex justify-end gap-2">
+      <button id="btn-daxck" class="px-4 py-2 bg-emerald-600 text-white rounded">ĐÃ CHUYỂN KHOẢN</button>
+      <button id="btn-close-pay" class="px-4 py-2 bg-gray-200 rounded">Đóng</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const qs=(s)=>document.querySelector(s), api=(u,o={})=>fetch(u,o);
+let TOKEN=localStorage.getItem("token")||"", ME=null, CATALOG={categories:[],subs:[]};
+
+const screens={auth:qs("#screen-auth"),catalog:qs("#screen-catalog"),library:qs("#screen-library"),noti:qs("#screen-noti"),admin:qs("#screen-admin")};
+function show(s){Object.values(screens).forEach(e=>e.classList.add("hidden")); screens[s].classList.remove("hidden");}
+
+function setAuthedUI(){
+  const navAdmin=qs("#nav-admin"), navAuth=qs("#nav-auth");
+  if(ME){
+    navAuth.innerHTML = `<span class="text-sm text-gray-600">Xin chào, <b>${ME.name}</b></span><button id="btn-logout" class="px-3 py-1.5 rounded bg-gray-200">Đăng xuất</button>`;
+    qs("#btn-logout").onclick=()=>{localStorage.removeItem("token"); location.reload();};
+    navAdmin.classList.toggle("hidden", ME.role!=="admin");
+    if(ME.role==="admin") pollAdminBadge();
+    pollNotiBadge();
+  }else{
+    navAuth.innerHTML = '<button id="btn-login" class="px-3 py-1.5 rounded bg-gray-900 text-white">Đăng nhập/Đăng ký</button>';
+    qs("#btn-login").onclick=()=>show("auth");
+    navAdmin.classList.add("hidden");
+  }
+}
+
+// badges
+async function pollAdminBadge(){
+  try{
+    const r=await api('/api/admin/pending-count',{headers:{Authorization:'Bearer '+TOKEN}});
+    if(!r.ok) return;
+    const {pending}=await r.json(); const b=qs('#badge-admin');
+    if(pending>0){b.textContent=pending; b.classList.remove('hidden');} else b.classList.add('hidden');
+  }catch{} setTimeout(pollAdminBadge,5000);
+}
+async function pollNotiBadge(){
+  try{
+    const r=await api('/api/notifications/count',{headers:{Authorization:'Bearer '+TOKEN}});
+    if(!r.ok) return;
+    const {unread}=await r.json(); const b=qs('#badge-noti');
+    if(unread>0){b.textContent=unread; b.classList.remove('hidden');} else b.classList.add('hidden');
+  }catch{} setTimeout(pollNotiBadge,5000);
+}
+
+// auth
+qs("#login-form").addEventListener("submit", async e=>{
+  e.preventDefault();
+  const login=qs("#login-identity").value.trim();
+  const password=qs("#login-password").value;
+  const asAdmin=qs("#isAdmin").checked;
+  const r=await api('/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({login,password,asAdmin})});
+  const d=await r.json(); if(!r.ok) return alert(d.message||'Đăng nhập thất bại');
+  TOKEN=d.token; localStorage.setItem('token',TOKEN);
+  await loadMe(); await loadCatalog(); show('catalog');
+});
+qs("#register-form").addEventListener("submit", async e=>{
+  e.preventDefault();
+  const name=qs("#reg-name").value.trim(), email=qs("#reg-email").value.trim();
+  const pass=qs("#reg-pass").value, pass2=qs("#reg-pass2").value;
+  if(pass!==pass2) return alert("Mật khẩu nhập lại không khớp");
+  const r=await api('/api/register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,email,password:pass})});
+  const d=await r.json(); if(!r.ok) return alert(d.message||'Đăng ký thất bại'); alert('Đăng ký thành công, hãy đăng nhập!');
+});
+
+// catalog & drawer
+async function loadCatalog(){
+  const r=await api('/api/catalog'); CATALOG=await r.json();
+  const grid=qs("#cat-grid"); grid.innerHTML="";
+  CATALOG.categories.forEach(cat=>{
+    const div=document.createElement('div'); div.className="bg-white p-4 rounded shadow cursor-pointer hover:ring";
+    div.innerHTML=`<div class="font-semibold">${cat}</div><div class="text-sm text-gray-500">Bấm để xem</div>`;
+    div.onclick=()=>openDrawer(cat); grid.appendChild(div);
+  });
+  const selC=qs('#form-upload [name="category"]'); const selS=qs('#form-upload [name="sub"]');
+  if(selC){selC.innerHTML=CATALOG.categories.map(c=>`<option>${c}</option>`).join(""); selS.innerHTML=CATALOG.subs.map(s=>`<option value="${s.key}">${s.name}</option>`).join("");}
+}
+async function openDrawer(category){
+  qs('#drawer-title').textContent=category;
+  const body=qs('#drawer-body'); body.innerHTML="";
+  const subs=document.createElement('div'); subs.className="grid grid-cols-2 gap-2 mb-3";
+  subs.innerHTML=CATALOG.subs.map(s=>`<button data-sub="${s.key}" class="px-3 py-2 bg-gray-100 rounded hover:bg-gray-200">${s.name}</button>`).join("");
+  subs.querySelectorAll('button').forEach(btn=>{btn.onclick=()=>loadItems(category,btn.dataset.sub)});
+  body.appendChild(subs);
+  loadItems(category, CATALOG.subs[0].key);
+  qs('#drawer').classList.add('open'); qs('#drawer-overlay').classList.add('show');
+}
+qs('#close-drawer').onclick=()=>{qs('#drawer').classList.remove('open'); qs('#drawer-overlay').classList.remove('show');};
+async function loadItems(category, sub){
+  const r=await api('/api/items?category='+encodeURIComponent(category)+'&sub='+sub);
+  const items=await r.json(); const body=qs('#drawer-body');
+  const list=document.createElement('div'); list.className="space-y-2";
+  list.innerHTML=items.map(i=>`
+    <div class="border rounded p-3 flex items-center justify-between">
+      <div><div class="font-medium">${i.title}</div><div class="text-sm text-gray-500">${i.subName} • ${(i.price/1000).toFixed(0)}K</div></div>
+      <button class="px-3 py-1.5 bg-emerald-600 text-white rounded" data-id="${i.id}">Mua</button>
+    </div>`).join("");
+  list.querySelectorAll('button').forEach(b=>b.onclick=()=>startOrder(b.dataset.id));
+  const ch=[...qs('#drawer-body').children]; if(ch.length>1) ch.slice(1).forEach(el=>el.remove());
+  qs('#drawer-body').appendChild(list);
+}
+
+// order + payment modal
+async function startOrder(itemId){
+  if(!ME){alert('Hãy đăng nhập trước');return;}
+  const r=await api('/api/order',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+TOKEN},body:JSON.stringify({itemId})});
+  const order=await r.json(); if(!r.ok) return alert(order.message||'Không tạo được đơn');
+  window.CURRENT_ORDER=order;
+  const set=await (await api('/api/settings')).json();
+  qs('#pay-info').innerHTML=`
+    <div><b>Người nhận:</b> ${set.momoName} – ${set.momoPhone}</div>
+    <div><b>Số tiền:</b> ${(order.price/1000).toFixed(0)}K</div>
+    <div><b>Nội dung CK:</b> <code>${ME.ndck}</code></div>
+    <img class="mt-2 rounded" src="${set.momoQrTemplate}${encodeURIComponent(set.momoName+' - '+set.momoPhone)}" alt="qr" />
+    <p class="text-xs text-gray-500 mt-2">Sau khi chuyển khoản, bấm “ĐÃ CHUYỂN KHOẢN”. Admin sẽ được thông báo ngay.</p>`;
+  qs('#pay-modal').classList.add('show');
+}
+qs('#btn-close-pay').onclick=()=>qs('#pay-modal').classList.remove('show');
+qs('#btn-daxck').onclick=async()=>{
+  if(!window.CURRENT_ORDER) return;
+  const r=await api('/api/order/'+window.CURRENT_ORDER.id+'/confirm',{method:'POST',headers:{Authorization:'Bearer '+TOKEN}});
+  const d=await r.json(); if(!r.ok) return alert(d.message||'Lỗi xác nhận');
+  alert('Đã gửi xác nhận. Admin sẽ duyệt sớm!'); qs('#pay-modal').classList.remove('show');
+};
+
+// library
+async function loadLibrary(){
+  const r=await api('/api/my-orders',{headers:{Authorization:'Bearer '+TOKEN}});
+  const orders=await r.json(); const wrap=qs('#lib-list'); wrap.innerHTML="";
+  orders.forEach(o=>{
+    const unlocked=ME.unlockedItemIds?.includes(o.itemId);
+    wrap.innerHTML+=`
+      <div class="bg-white p-3 rounded shadow">
+        <div class="font-medium">${o.item.title}</div>
+        <div class="text-sm text-gray-500">${o.item.subName} • ${(o.item.price/1000).toFixed(0)}K</div>
+        <div class="mt-2">
+          <span class="text-xs px-2 py-1 rounded ${o.status==='approved'?'bg-emerald-100 text-emerald-700':o.status==='reported'?'bg-yellow-100 text-yellow-700':'bg-gray-100 text-gray-600'}">
+            ${o.status==='approved'?'Đã duyệt':o.status==='reported'?'Đã báo chuyển khoản':'Mới tạo'}
+          </span>
+          ${unlocked?(o.item.filePath?`<a class="ml-2 text-blue-600 underline" target="_blank" href="${o.item.filePath}">Tải tài liệu</a>`:'<span class="ml-2 text-sm text-gray-400">(chưa có file)</span>'):'<span class="ml-2 text-sm text-rose-600">Chưa kích hoạt</span>'}
+        </div>
+      </div>`;
+  });
+}
+qs('#btn-activate').onclick=async()=>{
+  const code=qs('#active-code').value.trim(); if(!code) return alert('Nhập mã kích hoạt');
+  const r=await api('/api/activate',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+TOKEN},body:JSON.stringify({code})});
+  const d=await r.json(); if(!r.ok) return alert(d.message||'Kích hoạt thất bại');
+  alert('Kích hoạt thành công!'); await loadMe(); await loadLibrary();
+};
+
+// notifications
+async function loadNoti(){
+  const r=await api('/api/notifications',{headers:{Authorization:'Bearer '+TOKEN}});
+  const list=await r.json(); const wrap=qs('#noti-list');
+  wrap.innerHTML=list.map(n=>`
+    <div class="bg-white p-3 rounded shadow">
+      <div class="text-sm">${n.message}</div>
+      <div class="text-xs text-gray-500 mt-1">${new Date(n.createdAt).toLocaleString()}</div>
+    </div>`).join("");
+}
+qs('#btn-readall').onclick=async()=>{
+  await api('/api/notifications/read-all',{method:'POST',headers:{Authorization:'Bearer '+TOKEN}});
+  pollNotiBadge(); loadNoti();
+};
+
+// admin
+async function loadPending(){
+  const r=await api('/api/admin/pending',{headers:{Authorization:'Bearer '+TOKEN}});
+  if(!r.ok){qs('#pending-list').innerHTML='<p class="text-sm text-gray-500">Không có đơn chờ</p>'; return;}
+  const list=await r.json(); const wrap=qs('#pending-list'); wrap.innerHTML="";
+  if(list.length===0){wrap.innerHTML='<p class="text-sm text-gray-500">Không có đơn chờ</p>'; return;}
+  list.forEach(o=>{
+    wrap.innerHTML+=`
+      <div class="border rounded p-3 flex justify-between items-center">
+        <div>
+          <div class="font-medium">${o.item.title}</div>
+          <div class="text-sm text-gray-500">Người mua: ${o.user.name} • NDCK: ${o.user.ndck} • ${(o.price/1000).toFixed(0)}K</div>
+        </div>
+        <button class="px-3 py-1.5 bg-emerald-600 text-white rounded" data-id="${o.id}">Xác nhận</button>
+      </div>`;
+  });
+  wrap.querySelectorAll('button').forEach(btn=>btn.onclick=async()=>{
+    const r=await api('/api/admin/orders/'+btn.dataset.id+'/approve',{method:'POST',headers:{Authorization:'Bearer '+TOKEN}});
+    const d=await r.json(); if(!r.ok) return alert(d.message||'Lỗi duyệt đơn');
+    alert('Đã duyệt. Mã kích hoạt: '+d.activationCode);
+    pollAdminBadge(); loadPending();
+  });
+}
+qs('#form-upload').addEventListener('submit', async e=>{
+  e.preventDefault(); const fd=new FormData(e.target);
+  const r=await fetch('/api/admin/upload',{method:'POST',headers:{Authorization:'Bearer '+TOKEN},body:fd});
+  const d=await r.json(); if(!r.ok) return alert(d.message||'Upload lỗi');
+  qs('#upload-msg').textContent='Đã tải: '+d.title;
+});
+
+// nav
+qs("#nav-catalog").onclick=()=>show('catalog');
+qs("#nav-library").onclick=async()=>{if(!await guard())return; await loadLibrary(); show('library');}
+qs("#nav-noti").onclick=async()=>{if(!await guard())return; await loadNoti(); show('noti');}
+qs("#nav-admin").onclick=async()=>{if(!await guard(true))return; await loadPending(); show('admin');}
+async function guard(needAdmin=false){ if(!ME){alert('Hãy đăng nhập trước');show('auth');return false;} if(needAdmin&&ME.role!=='admin'){alert('Bạn không phải admin');return false;} return true; }
+
+// boot
+async function loadMe(){ if(!TOKEN){ME=null; setAuthedUI(); return;} const r=await api('/api/me',{headers:{Authorization:'Bearer '+TOKEN}}); if(!r.ok){ME=null; localStorage.removeItem('token'); setAuthedUI(); return;} ME=await r.json(); setAuthedUI(); }
+(async()=>{ await loadMe(); const r=await api('/api/catalog'); CATALOG=await r.json(); await loadCatalog(); show(ME? 'catalog':'auth'); })();
+</script>
+</body>
+</html>
